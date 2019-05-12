@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.camera2basic
+package com.example.android.camera2mlkit
 
 import android.Manifest
 import android.app.AlertDialog
@@ -36,9 +36,9 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.android.camera2basic.view.GraphicOverlay
-import com.example.android.camera2basic.view.LabelGraphic
-import com.example.android.camera2basic.view.TextGraphic
+import com.example.android.camera2mlkit.view.GraphicOverlay
+import com.example.android.camera2mlkit.view.LabelGraphic
+import com.example.android.camera2mlkit.view.TextGraphic
 import com.google.firebase.ml.vision.text.FirebaseVisionText
 import kotlinx.coroutines.*
 import java.util.Arrays

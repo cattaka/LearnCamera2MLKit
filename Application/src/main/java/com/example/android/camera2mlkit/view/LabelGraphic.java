@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.example.android.camera2basic.view;
+package com.example.android.camera2mlkit.view;
 
 import android.graphics.Canvas;
 import android.graphics.Color;

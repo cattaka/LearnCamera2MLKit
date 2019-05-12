@@ -1,4 +1,4 @@
-package com.example.android.camera2basic
+package com.example.android.camera2mlkit
 
 import android.content.Context
 import android.graphics.Bitmap

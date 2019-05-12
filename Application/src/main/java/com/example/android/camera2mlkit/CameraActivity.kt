@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.camera2basic
+package com.example.android.camera2mlkit
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
