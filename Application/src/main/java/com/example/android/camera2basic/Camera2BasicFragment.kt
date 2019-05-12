@@ -31,9 +31,15 @@ import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.*
+import android.widget.ImageView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.example.android.camera2basic.view.GraphicOverlay
+import com.example.android.camera2basic.view.TextGraphic
+import com.google.firebase.ml.vision.text.FirebaseVisionText
+import kotlinx.coroutines.*
 import java.io.File
 import java.util.Arrays
 import java.util.Collections
@@ -133,12 +139,48 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
      */
     private lateinit var file: File
 
+    private lateinit var imageView: ImageView
+    private lateinit var graphicOverlay: GraphicOverlay
+
+    private val textRecoginizer = TextRecoginizer()
+
+    private val viewModelJob = Job()
+
+    private val uiScope = CoroutineScope(Dispatchers.Main + viewModelJob)
+
+    private val ioScope = CoroutineScope(Dispatchers.IO + viewModelJob)
+
     /**
      * This a callback object for the [ImageReader]. "onImageAvailable" will be called when a
      * still image is ready to be saved.
      */
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener {
-        backgroundHandler?.post(ImageSaver(it.acquireNextImage(), file))
+        uiScope.launch {
+            val bitmap = ioScope.toBitmap(it.acquireNextImage()).await()
+            imageView.setImageBitmap(bitmap)
+            val firebaseVisionText = textRecoginizer.runTextRecognition(bitmap)
+            processTextRecognitionResult(firebaseVisionText)
+        }
+    }
+
+    private fun processTextRecognitionResult(texts: FirebaseVisionText) {
+        val activity = activity ?: return
+        val blocks = texts.textBlocks
+        if (blocks.size == 0) {
+            Toast.makeText(activity, "No text found", Toast.LENGTH_SHORT).show()
+            return
+        }
+        graphicOverlay.clear()
+        for (i in blocks.indices) {
+            val lines = blocks[i].lines
+            for (j in lines.indices) {
+                val elements = lines[j].elements
+                for (k in elements.indices) {
+                    val textGraphic = TextGraphic(graphicOverlay, elements[k])
+                    graphicOverlay.add(textGraphic)
+                }
+            }
+        }
     }
 
     /**
@@ -233,6 +275,11 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
 
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        textRecoginizer.initCustomModel(requireContext())
+    }
+
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?,
                               savedInstanceState: Bundle?
@@ -242,6 +289,8 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
         view.findViewById<View>(R.id.picture).setOnClickListener(this)
         view.findViewById<View>(R.id.info).setOnClickListener(this)
         textureView = view.findViewById(R.id.texture)
+        imageView = view.findViewById(R.id.image_view)
+        graphicOverlay = view.findViewById(R.id.graphic_overlay)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -267,6 +316,10 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
     override fun onPause() {
         closeCamera()
         stopBackgroundThread()
+
+        uiScope.cancel()
+        ioScope.cancel()
+
         super.onPause()
     }
 
@@ -633,6 +686,10 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
                     activity?.showToast("Saved: $file")
                     Log.d(TAG, file.toString())
                     unlockFocus()
+
+                    activity?.runOnUiThread {
+
+                    }
                 }
             }
 
@@ -644,6 +701,10 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
         } catch (e: CameraAccessException) {
             Log.e(TAG, e.toString())
         }
+
+    }
+
+    private fun onSaved() {
 
     }
 

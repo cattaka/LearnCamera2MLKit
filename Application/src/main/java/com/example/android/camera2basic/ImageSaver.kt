@@ -1,12 +1,15 @@
 package com.example.android.camera2basic
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.Image
 import android.util.Log
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 
 /**
  * Saves a JPEG [Image] into the specified [File].
@@ -52,4 +55,11 @@ internal class ImageSaver(
          */
         private val TAG = "ImageSaver"
     }
+}
+
+fun CoroutineScope.toBitmap(image: Image): Deferred<Bitmap> = this.async {
+    val buffer = image.planes[0].buffer
+    val bytes = ByteArray(buffer.remaining())
+    buffer.get(bytes)
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)!!
 }
