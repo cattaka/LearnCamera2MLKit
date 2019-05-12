@@ -29,4 +29,6 @@
 
         ]]>
     </string>
+    <string name="process_text">Text</string>
+    <string name="process_object">Object</string>
 </resources>

@@ -37,10 +37,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.android.camera2basic.view.GraphicOverlay
+import com.example.android.camera2basic.view.LabelGraphic
 import com.example.android.camera2basic.view.TextGraphic
 import com.google.firebase.ml.vision.text.FirebaseVisionText
 import kotlinx.coroutines.*
-import java.io.File
 import java.util.Arrays
 import java.util.Collections
 import java.util.concurrent.Semaphore
@@ -134,11 +134,6 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
      */
     private var imageReader: ImageReader? = null
 
-    /**
-     * This is the output file for our picture.
-     */
-    private lateinit var file: File
-
     private lateinit var imageView: ImageView
     private lateinit var graphicOverlay: GraphicOverlay
 
@@ -150,17 +145,31 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
 
     private val ioScope = CoroutineScope(Dispatchers.IO + viewModelJob)
 
+    private var processMode = ProcessMode.TEXT
+
     /**
      * This a callback object for the [ImageReader]. "onImageAvailable" will be called when a
      * still image is ready to be saved.
      */
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener {
         uiScope.launch {
-            val bitmap = ioScope.toBitmap(it.acquireNextImage()).await()
+            val image = it.acquireNextImage()
+            val bitmap = ioScope.toBitmap(image).await()
+            image.close()
             recalcMatrix(bitmap)
             imageView.setImageBitmap(bitmap)
-            val firebaseVisionText = textRecoginizer.runTextRecognition(bitmap)
-            processTextRecognitionResult(firebaseVisionText)
+            when (processMode) {
+                ProcessMode.TEXT -> {
+                    val firebaseVisionText = textRecoginizer.runTextRecognition(bitmap)
+                    processTextRecognitionResult(firebaseVisionText)
+                }
+                ProcessMode.OBJECT -> {
+                    graphicOverlay.matrix = Matrix()
+                    val topModels = textRecoginizer.runModelInference(bitmap)
+                    processObjectsResult(topModels)
+                }
+            }
+
         }
     }
 
@@ -182,6 +191,12 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
                 }
             }
         }
+    }
+
+    private fun processObjectsResult(topLabels: List<String>) {
+        graphicOverlay.clear()
+        val labelGraphic = LabelGraphic(graphicOverlay, topLabels)
+        graphicOverlay.add(labelGraphic)
     }
 
     private fun recalcMatrix(bitmap: Bitmap) {
@@ -301,16 +316,12 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
     ): View? = inflater.inflate(R.layout.fragment_camera2_basic, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        view.findViewById<View>(R.id.picture).setOnClickListener(this)
+        view.findViewById<View>(R.id.process_text).setOnClickListener(this)
+        view.findViewById<View>(R.id.process_object).setOnClickListener(this)
         view.findViewById<View>(R.id.info).setOnClickListener(this)
         textureView = view.findViewById(R.id.texture)
         imageView = view.findViewById(R.id.image_view)
         graphicOverlay = view.findViewById(R.id.graphic_overlay)
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        activity?.let { file = File(it.getExternalFilesDir(null), PIC_FILE_NAME) }
     }
 
     override fun onResume() {
@@ -698,8 +709,6 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
                 override fun onCaptureCompleted(session: CameraCaptureSession,
                                                 request: CaptureRequest,
                                                 result: TotalCaptureResult) {
-                    activity?.showToast("Saved: $file")
-                    Log.d(TAG, file.toString())
                     unlockFocus()
 
                     activity?.runOnUiThread {
@@ -747,11 +756,21 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
 
     override fun onClick(view: View) {
         when (view.id) {
-            R.id.picture -> {
+            R.id.process_text -> {
                 if (imageView.drawable != null) {
                     imageView.setImageDrawable(null)
                     graphicOverlay.clear()
                 } else {
+                    processMode = ProcessMode.TEXT
+                    lockFocus()
+                }
+            }
+            R.id.process_object -> {
+                if (imageView.drawable != null) {
+                    imageView.setImageDrawable(null)
+                    graphicOverlay.clear()
+                } else {
+                    processMode = ProcessMode.OBJECT
                     lockFocus()
                 }
             }
@@ -885,5 +904,10 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
 
         @JvmStatic
         fun newInstance(): Camera2BasicFragment = Camera2BasicFragment()
+    }
+
+    enum class ProcessMode {
+        TEXT,
+        OBJECT
     }
 }
