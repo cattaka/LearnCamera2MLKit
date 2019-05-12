@@ -68,7 +68,11 @@ public class TextGraphic extends GraphicOverlay.Graphic {
         RectF rect = new RectF(element.getBoundingBox());
         canvas.drawRect(rect, rectPaint);
 
+        int n = element.getText().length();
+        float fontSize = Math.min(rect.width() / n, rect.height()) * 1.8f;
+
         // Renders the text at the bottom of the box.
+        textPaint.setTextSize(fontSize);
         canvas.drawText(element.getText(), rect.left, rect.bottom, textPaint);
     }
 }
