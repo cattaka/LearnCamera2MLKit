@@ -15,12 +15,15 @@ package com.example.android.camera2basic.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.hardware.camera2.CameraCharacteristics;
 import android.util.AttributeSet;
 import android.view.View;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import androidx.annotation.NonNull;
 
 /**
  * A view which renders a series of custom graphics to be overlayed on top of an associated preview
@@ -49,6 +52,7 @@ public class GraphicOverlay extends View {
     private float heightScaleFactor = 1.0f;
     private int facing = CameraCharacteristics.LENS_FACING_BACK;
     private Set<Graphic> graphics = new HashSet<>();
+    private Matrix matrix = new Matrix();
 
     /**
      * Base class for a custom graphics object to be rendered within the graphic overlay. Subclass
@@ -176,6 +180,9 @@ public class GraphicOverlay extends View {
         super.onDraw(canvas);
 
         synchronized (lock) {
+            canvas.save();
+            canvas.setMatrix(matrix);
+
             if ((previewWidth != 0) && (previewHeight != 0)) {
                 widthScaleFactor = (float) canvas.getWidth() / (float) previewWidth;
                 heightScaleFactor = (float) canvas.getHeight() / (float) previewHeight;
@@ -184,6 +191,18 @@ public class GraphicOverlay extends View {
             for (Graphic graphic : graphics) {
                 graphic.draw(canvas);
             }
+
+            canvas.restore();
         }
+    }
+
+    @NonNull
+    @Override
+    public Matrix getMatrix() {
+        return matrix;
+    }
+
+    public void setMatrix(@NonNull Matrix matrix) {
+        this.matrix.set(matrix);
     }
 }

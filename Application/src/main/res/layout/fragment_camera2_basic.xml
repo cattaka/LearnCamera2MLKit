@@ -29,7 +29,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/control"
-        android:adjustViewBounds="true" />
+        android:adjustViewBounds="true"
+        android:scaleType="matrix" />
 
     <com.example.android.camera2basic.view.GraphicOverlay
         android:id="@+id/graphic_overlay"

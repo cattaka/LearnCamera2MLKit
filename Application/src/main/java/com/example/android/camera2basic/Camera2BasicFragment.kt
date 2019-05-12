@@ -157,6 +157,7 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
     private val onImageAvailableListener = ImageReader.OnImageAvailableListener {
         uiScope.launch {
             val bitmap = ioScope.toBitmap(it.acquireNextImage()).await()
+            recalcMatrix(bitmap)
             imageView.setImageBitmap(bitmap)
             val firebaseVisionText = textRecoginizer.runTextRecognition(bitmap)
             processTextRecognitionResult(firebaseVisionText)
@@ -181,6 +182,20 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
                 }
             }
         }
+    }
+
+    private fun recalcMatrix(bitmap: Bitmap) {
+        val matrix = Matrix()
+        matrix.postTranslate(-bitmap.width / 2f, -bitmap.height / 2f)
+        val s1 = Math.min(bitmap.width, bitmap.height).toFloat()
+        val s2 = Math.min(imageView.width, imageView.height).toFloat()
+        matrix.postScale(s2 / s1, s2 / s1)
+        matrix.postRotate(90f)
+        matrix.postTranslate(imageView.width / 2f, imageView.height / 2f)
+
+        imageView.imageMatrix = matrix
+        graphicOverlay.matrix = matrix
+
     }
 
     /**
@@ -732,7 +747,14 @@ class Camera2BasicFragment : Fragment(), View.OnClickListener,
 
     override fun onClick(view: View) {
         when (view.id) {
-            R.id.picture -> lockFocus()
+            R.id.picture -> {
+                if (imageView.drawable != null) {
+                    imageView.setImageDrawable(null)
+                    graphicOverlay.clear()
+                } else {
+                    lockFocus()
+                }
+            }
             R.id.info -> {
                 if (activity != null) {
                     AlertDialog.Builder(activity)
